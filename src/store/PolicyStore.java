@@ -1,5 +1,6 @@
 package store;
 
+import exception.PolicyNotFoundException;
 import model.Policy;
 
 import java.util.*;
@@ -47,8 +48,12 @@ public class PolicyStore {
         }
     }
 
-    public void printPolicy(String policyId) {
-        System.out.println(policyMap.get(policyId));
+    public void printPolicy(String policyId) throws PolicyNotFoundException {
+        try{
+            System.out.println(policyMap.get(policyId));
+        }catch (Exception e){
+            throw new PolicyNotFoundException();
+        }
     }
 
     public void printPoliciesByPolicyIdOrder() {
