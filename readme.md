@@ -1,110 +1,478 @@
 # HDFC Life Policy Claims Console
 
-A small Java console application that demonstrates a policy and claims workflow for HDFC Life. The project is built around common object-oriented design patterns and Java collections rather than an external framework or database.
+A plain Java console application demonstrating **Collections, SOLID principles, Singleton, Factory, Builder, Strategy, Observer, and custom exception handling** through a small HDFC Life policy and claims management system.
 
-## What It Demonstrates
+## Features
 
-- Creating different policy types through a factory
-- Calculating premiums with interchangeable strategy classes
-- Storing and looking up policies with Java collections
-- Building claims with optional fields using the Builder pattern
-- Validating and filing claims through a service layer
-- Publishing claim-status updates to multiple observers
-- Writing claim activity to `audit.log` with try-with-resources
-- Handling invalid claims, unknown policy types, and missing policies
+* Stores and manages insurance policies
+* Calculates premiums using the **Strategy Pattern**
+* Creates policies using the **Factory Pattern**
+* Creates immutable claims using a fluent **Builder**
+* Tracks claim status changes using the **Observer Pattern**
+* Uses a thread-safe enum **Singleton** for application configuration
+* Demonstrates Java Collections:
 
-## Policy Types and Premiums
-
-The demo starts with a base premium and applies the following strategy:
-
-| Policy type | Premium calculation |
-| --- | --- |
-| `TERM` | Base premium |
-| `ENDOWMENT` | Base premium + 8% |
-| `ULIP` | Base premium + 12% |
-
-For example, a ULIP with a base premium of `42,000` has a calculated premium of `47,040`.
+  * `ArrayList` — all policies
+  * `HashSet` — unique customer names
+  * `HashMap` — policy lookup by policy number
+  * `TreeMap` — policies sorted by policy number
+  * `PriorityQueue` — claims ordered by urgency
+* Uses `Iterator` to print policies
+* Handles custom runtime exceptions
+* Writes claim activity to `audit.log` using try-with-resources
+* Uses plain Java only — no Spring and no Java Streams
 
 ## Project Structure
 
 ```text
-src/
-├── App.java                         # Console demo entry point
-├── config/                          # Application-level configuration
-├── constants/                       # Policy and claim enums
-├── exception/                       # Domain-specific runtime exceptions
-├── factory/                         # PolicyFactory
-├── model/                           # Policy and Claim domain models
-├── observer/                        # Claim event publisher and notifiers
-├── service/                         # Claim processing and audit logging
-├── store/                           # In-memory policy collections
-├── strategy/                        # Premium calculation strategies
-└── resources/app.config             # Sample application configuration
+hdfc-life-policy-system/
+├── src/
+│   └── com/
+│       └── hdfclife/
+│           ├── Main.java
+│           │
+│           ├── config/
+│           │   └── AppConfig.java
+│           │
+│           ├── model/
+│           │   ├── Policy.java
+│           │   ├── TermLifePolicy.java
+│           │   ├── UlipPolicy.java
+│           │   ├── EndowmentPolicy.java
+│           │   ├── Claim.java
+│           │   └── Urgency.java
+│           │
+│           ├── store/
+│           │   └── PolicyStore.java
+│           │
+│           ├── factory/
+│           │   └── PolicyFactory.java
+│           │
+│           ├── strategy/
+│           │   ├── PremiumStrategy.java
+│           │   ├── TermPremiumStrategy.java
+│           │   ├── UlipPremiumStrategy.java
+│           │   ├── EndowmentPremiumStrategy.java
+│           │   └── PremiumCalculator.java
+│           │
+│           ├── observer/
+│           │   ├── ClaimObserver.java
+│           │   ├── ClaimEventPublisher.java
+│           │   ├── InAppNotifier.java
+│           │   └── BranchLetterNotifier.java
+│           │
+│           ├── service/
+│           │   ├── ClaimService.java
+│           │   └── AuditLogger.java
+│           │
+│           └── exception/
+│               ├── PolicyServiceException.java
+│               ├── PolicyNotFoundException.java
+│               ├── InvalidClaimException.java
+│               └── UnknownPolicyTypeException.java
+│
+├── .gitignore
+└── README.md
 ```
+
+## Seed Data
+
+The application initializes the following six policies through `PolicyFactory`:
+
+| Policy Number  | Customer     | Type      | Base Premium | Status  |
+| -------------- | ------------ | --------- | -----------: | ------- |
+| HDFC-LIFE-1001 | Anita Sharma | TERM      |       18,500 | Active  |
+| HDFC-LIFE-1002 | Rahul Mehta  | ULIP      |       42,000 | Active  |
+| HDFC-LIFE-1003 | Priya Nair   | ENDOWMENT |       27,000 | Lapsed  |
+| HDFC-LIFE-1004 | Vikram Singh | TERM      |       15,200 | Active  |
+| HDFC-LIFE-1005 | Sneha Patel  | ULIP      |       36,000 | Active  |
+| HDFC-LIFE-1006 | Anita Sharma | ENDOWMENT |       22,000 | Pending |
 
 ## Design Patterns
 
-| Pattern | Where it is used | Purpose |
-| --- | --- | --- |
-| Factory | `factory.PolicyFactory` | Selects the correct policy implementation from a type name |
-| Strategy | `strategy.*PremiumStrategy` | Keeps premium rules separate and replaceable |
-| Builder | `model.Claim.Builder` | Creates claims with optional hospital and remarks fields |
-| Observer | `observer.ClaimEventPublisher` | Notifies registered channels when a claim status changes |
-| Singleton | `config.AppConfig` enum | Provides shared application settings |
+### 1. Singleton
 
-## Requirements
+`AppConfig` is implemented as a thread-safe enum singleton:
 
-- Java 14 or newer. The source uses the modern `switch` expression syntax.
-- A JDK, including the `javac` compiler.
-- No third-party dependencies.
+```java
+AppConfig.INSTANCE
+```
 
-## Run From the Command Line
+It provides:
+
+* Company name: `HDFC Life`
+* Maximum claim amount: `500000`
+
+No direct object creation is required.
+
+### 2. Factory
+
+`PolicyFactory` centralizes policy creation:
+
+```java
+PolicyFactory.create(type, policyNo, customer, premium, status)
+```
+
+Supported types:
+
+* `TERM` → `TermLifePolicy`
+* `ULIP` → `UlipPolicy`
+* `ENDOWMENT` → `EndowmentPolicy`
+
+An unknown type throws `UnknownPolicyTypeException`.
+
+### 3. Builder
+
+Claims are created using a fluent static inner `Builder`:
+
+```java
+Claim claim = new Claim.Builder(
+        "HDFC-LIFE-1001",
+        25000,
+        Urgency.HIGH
+    )
+    .hospitalName("Apollo Hospital")
+    .remarks("Hospitalisation")
+    .build();
+```
+
+Required fields:
+
+* `policyNo`
+* `claimAmount`
+* `urgency`
+
+Optional fields:
+
+* `hospitalName`
+* `remarks`
+
+A claim starts with `SUBMITTED` status. After construction, only `updateStatus(...)` can modify its state.
+
+### 4. Strategy
+
+Premium calculation is separated from `PremiumCalculator` using `PremiumStrategy`.
+
+Premium rules:
+
+| Policy Type | Calculation               |
+| ----------- | ------------------------- |
+| TERM        | `basePremium * 100 / 100` |
+| ULIP        | `basePremium * 112 / 100` |
+| ENDOWMENT   | `basePremium * 108 / 100` |
+
+For example:
+
+```text
+42000 * 112 / 100 = 47040
+```
+
+Therefore:
+
+```text
+ULIP premium for HDFC-LIFE-1002 = 47040
+```
+
+A different `PremiumStrategy` can be supplied to `PremiumCalculator` at runtime without modifying the calculator itself.
+
+### 5. Observer
+
+`ClaimEventPublisher` notifies every registered `ClaimObserver` when a claim status changes.
+
+Observers:
+
+* `InAppNotifier`
+* `BranchLetterNotifier`
+
+Both implement the small interface:
+
+```java
+ClaimObserver
+```
+
+with one method:
+
+```java
+onClaimUpdate(Claim claim)
+```
+
+When the HIGH-priority claim changes from `SUBMITTED` to `APPROVED`, both observers receive the update.
+
+## SOLID Principles
+
+### Single Responsibility Principle
+
+Responsibilities are separated into focused classes:
+
+* `PolicyStore` — policy storage and collection management
+* `PremiumCalculator` — premium calculation
+* `ClaimService` — claim-related operations
+* `AuditLogger` — audit logging
+
+### Open/Closed Principle
+
+New premium calculation strategies can be added by implementing `PremiumStrategy` without modifying `PremiumCalculator`.
+
+### Liskov Substitution Principle
+
+Any implementation of `PremiumStrategy` can be supplied to `PremiumCalculator`.
+
+### Interface Segregation Principle
+
+Observers depend only on the small `ClaimObserver` interface containing a single method.
+
+### Dependency Inversion Principle
+
+`ClaimService` works with abstractions such as `PremiumStrategy` and `ClaimObserver` rather than depending directly on concrete implementations.
+
+## Collections Used
+
+The application intentionally uses all required collection types:
+
+```text
+ArrayList
+    ↓
+All policies
+
+HashSet
+    ↓
+Unique customer names
+
+HashMap
+    ↓
+Policy number → Policy lookup
+
+TreeMap
+    ↓
+Policy number → Policy sorted by policy number
+
+PriorityQueue
+    ↓
+Claims ordered by:
+HIGH → MEDIUM → LOW
+```
+
+Policies are printed using an `Iterator` rather than relying only on an enhanced `for` loop.
+
+## Exception Handling
+
+The custom exception hierarchy is:
+
+```text
+RuntimeException
+    └── PolicyServiceException
+        ├── PolicyNotFoundException
+        ├── InvalidClaimException
+        └── UnknownPolicyTypeException
+```
+
+### Policy Not Found
+
+Looking up:
+
+```text
+HDFC-LIFE-9999
+```
+
+throws:
+
+```text
+PolicyNotFoundException
+```
+
+### Invalid Claim
+
+A claim amount is invalid when:
+
+```text
+amount <= 0
+OR
+amount > 500000
+```
+
+For example:
+
+```text
+600000
+```
+
+throws:
+
+```text
+InvalidClaimException
+```
+
+### Unknown Policy Type
+
+Creating a policy with:
+
+```text
+INVALID
+```
+
+throws:
+
+```text
+UnknownPolicyTypeException
+```
+
+Exceptions are caught in `main`, and their messages are printed rather than being silently ignored.
+
+## Audit Logging
+
+`AuditLogger` implements:
+
+```java
+AutoCloseable
+```
+
+and writes claim activity to:
+
+```text
+audit.log
+```
+
+The logger is used with try-with-resources so that the file resource is closed automatically.
+
+If writing the file fails, the underlying `IOException` is wrapped in `PolicyServiceException` while preserving the original exception as the cause.
+
+`audit.log` is intentionally excluded from Git.
+
+## Application Flow
+
+The `main` method demonstrates the complete required flow:
+
+1. Print company name from `AppConfig`
+2. Print all six policies using an `Iterator`
+3. Print unique customer count
+4. Look up `HDFC-LIFE-1004`
+5. Print `TreeMap` keys in sorted order
+6. Calculate ULIP premium for `HDFC-LIFE-1002`
+7. Register both claim observers
+8. File HIGH, MEDIUM, and LOW claims
+9. Update the HIGH claim to `APPROVED`
+10. Demonstrate notifications from both observers
+11. Poll claims from the `PriorityQueue`
+12. Demonstrate missing-policy exception
+13. Demonstrate invalid-claim exception
+14. Demonstrate unknown-policy-type exception
+15. Write a claim entry to `audit.log`
+
+## Expected Important Output
+
+The exact formatting may vary, but the application demonstrates these required results:
+
+```text
+HDFC Life
+
+Unique customer count: 5
+
+HDFC-LIFE-1004 -> Vikram Singh
+
+TreeMap keys:
+HDFC-LIFE-1001
+HDFC-LIFE-1002
+HDFC-LIFE-1003
+HDFC-LIFE-1004
+HDFC-LIFE-1005
+HDFC-LIFE-1006
+
+ULIP premium for HDFC-LIFE-1002: 47040
+
+InAppNotifier: Claim HDFC-LIFE-1001 status changed to APPROVED
+BranchLetterNotifier: Claim HDFC-LIFE-1001 status changed to APPROVED
+
+PriorityQueue order:
+HIGH
+MEDIUM
+LOW
+
+Policy not found: HDFC-LIFE-9999
+Invalid claim amount: 600000
+Unknown policy type: INVALID
+```
+
+An entry is also written to:
+
+```text
+audit.log
+```
+
+## How to Compile
 
 From the project root:
 
 ```bash
-rm -rf out
-mkdir out
-javac -d out src/App.java src/config/*.java src/constants/*.java src/exception/*.java src/factory/*.java src/model/*.java src/observer/*.java src/service/*.java src/store/*.java src/strategy/*.java
-java -cp out App
+javac -d out $(find src -name "*.java")
 ```
 
-The application prints a console walkthrough that includes:
+On Windows PowerShell:
 
-1. The configured company name
-2. Seeded policies and their insertion order
-3. Unique customer count and policy lookup
-4. Policies sorted by policy ID with a `TreeMap`
-5. Calculated ULIP premium
-6. Observer notifications after a claim is accepted
-7. Claims removed from the processing queue
-8. Invalid claim and unknown policy type handling
+```powershell
+javac -d out (Get-ChildItem -Recurse src -Filter *.java | ForEach-Object { $_.FullName })
+```
 
-Filing a claim also appends an entry to `audit.log` in the directory where the application is started.
+## How to Run
 
-## Run in IntelliJ IDEA
+```bash
+java -cp out com.hdfclife.Main
+```
 
-1. Open the project directory in IntelliJ IDEA.
-2. Ensure a JDK 14+ is selected for the project.
-3. Mark `src` as the Sources Root if IntelliJ has not detected it automatically.
-4. Run `App.java`.
+## Requirements
 
-## Validation Rules
+* Java 8+ recommended
+* No Spring Framework
+* No external dependencies
+* No Java Streams
+* Standard Java Collections and APIs only
 
-- Claim amounts must be greater than `0` and no more than `500000`.
-- A claim must reference a policy present in `PolicyStore`.
-- Supported policy types are `TERM`, `ENDOWMENT`, and `ULIP`.
-- New policies start with `PolicyStatus.Pending`.
-- New claims start with `ClaimStatus.SUBMITTED`.
+## Git Hygiene
 
-## Current Implementation Notes
+The repository should contain source code and documentation, but generated files should not be committed.
 
-- Data is seeded in `App.main`; there is no database or interactive input yet.
-- `PolicyStore` keeps policies in an `ArrayList`, `HashMap`, `HashSet`, and case-insensitive `TreeMap` to demonstrate different collection use cases.
-- `ClaimEventPublisher` currently has two console observers: an in-app notifier and a branch-letter notifier.
-- `AppConfig` currently returns the company name and maximum claim amount in code. The `src/resources/app.config` file is included as a configuration example but is not loaded by the current `AppConfig` implementation.
-- The claim queue is ordered by `ClaimStatus` as defined by the enum, while `ClaimUrgency` is retained as claim data. The queue output in the demo should therefore be read as queue behavior, not as a general urgency scheduler.
+Recommended `.gitignore`:
 
-## Learning Focus
+```gitignore
+# Compiled Java files
+*.class
 
-This assignment is useful for practicing inheritance, enums, collections, custom exceptions, file I/O, try-with-resources, and several classic design patterns in a compact Java application.
+# Build/output directories
+out/
+bin/
+target/
+
+# Application-generated audit file
+audit.log
+
+# IDE files
+.idea/
+.vscode/
+*.iml
+
+# OS files
+.DS_Store
+Thumbs.db
+```
+
+## Learning Goals
+
+This project demonstrates how common Java design principles and patterns can work together in a practical console application:
+
+```text
+PolicyFactory
+      ↓
+PolicyStore
+      ↓
+PremiumCalculator ← PremiumStrategy
+      ↓
+ClaimService
+      ↓
+ClaimEventPublisher
+      ↓
+ ┌───────────────┐
+ ↓               ↓
+InAppNotifier   BranchLetterNotifier
+```
+
+The implementation keeps business responsibilities separated while still providing a simple executable Java application.
+
