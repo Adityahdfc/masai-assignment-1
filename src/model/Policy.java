@@ -2,14 +2,12 @@ package model;
 
 import constants.PolicyStatus;
 import constants.PolicyType;
-import constants.PolicyUrgency;
 
 public abstract class Policy {
     private String policyId;
     private String policyHolderName;
     private int policyPremium;
     private PolicyStatus policyStatus;
-    private PolicyUrgency policyUrgency;
 
     public String getPolicyId() {
         return policyId;
@@ -19,7 +17,7 @@ public abstract class Policy {
         return policyHolderName;
     }
 
-    public double getPolicyPremium() {
+    public int getPolicyPremium() {
         return policyPremium;
     }
 
@@ -31,20 +29,12 @@ public abstract class Policy {
         this.policyStatus = policyStatus;
     }
 
-    public PolicyUrgency getPolicyUrgency() {
-        return policyUrgency;
-    }
-
-    public void setPolicyUrgency(PolicyUrgency policyUrgency) {
-        this.policyUrgency = policyUrgency;
-    }
 
     public Policy(String policyId, String policyHolderName, int policyPremium) {
         this.policyId = policyId;
         this.policyHolderName = policyHolderName;
         this.policyPremium = policyPremium;
         this.policyStatus = PolicyStatus.Pending;
-        this.policyUrgency = PolicyUrgency.LOW;
     }
 
     @Override
@@ -54,7 +44,6 @@ public abstract class Policy {
                 ", policyHolderName='" + policyHolderName + '\'' +
                 ", policyPremium=" + policyPremium +
                 ", policyStatus=" + policyStatus +
-                ", policyUrgency=" + policyUrgency +
                 '}';
     }
 

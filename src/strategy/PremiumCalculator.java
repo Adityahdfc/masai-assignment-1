@@ -1,7 +1,9 @@
 package strategy;
 
 public class PremiumCalculator {
-    private PremiumStrategy premiumStrategy;
+    private PremiumStrategy premiumStrategy = null;
+
+    public PremiumCalculator() {}
 
     public PremiumCalculator(PremiumStrategy premiumStrategy) {
         this.premiumStrategy = premiumStrategy;

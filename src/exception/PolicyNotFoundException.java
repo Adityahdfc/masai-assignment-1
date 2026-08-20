@@ -1,7 +1,7 @@
 package exception;
 
 public class PolicyNotFoundException extends RuntimeException{
-    public PolicyNotFoundException(){
-        super("Missing Policy Number");
+    public PolicyNotFoundException(String message) {
+        super(message);
     }
 }
